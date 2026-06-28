@@ -1,7 +1,7 @@
 # 🌾 FarmSense AI
 ### Smart Farming Assistant — Weather Alerts + AI Suggestions + Crop Profit Comparison
 
-![Tech Stack](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
@@ -28,8 +28,8 @@ FarmSense AI is a full-stack smart farming assistant that helps Indian farmers m
 farmsense-ai/
 │
 ├── client/          # ⚛️  React.js Frontend (Vite + Tailwind)
-├── server/          # 🟢  Node.js + Express (Auth, Farm, Notifications)
-├── ai-engine/       # 🐍  Django + DRF + ML (AI, Weather, Crop Logic)
+├── server/          # 🟢  Node.js + Express (Auth, Farm, DB, Notifications)
+├── ai-engine/       # 🐍  Django + DRF + ML (Pure AI/ML — no app DB writes)
 └── README.md
 ```
 
@@ -39,15 +39,44 @@ React (port 5173)
     │  axios + JWT
     ▼
 Node.js (port 5000)  ──── PostgreSQL (port 5432)
-    │  internal HTTP + secret key          ▲
-    ▼                                      │
-Django (port 8000)  ────────────────────────
+    │  internal HTTP           (Node owns all app tables)
+    │  + secret key
+    ▼
+Django (port 8000)
+    │  Pure AI/ML Service
+    │  (owns only: crops, market_prices, weather_cache)
+    └──── PostgreSQL (same DB, only reads crop/weather data)
 ```
 
-- **React** only calls **Node.js** (never Django directly)
-- **Node.js** handles auth, farm data, notifications, scheduling
-- **Django** handles all AI/ML tasks, weather processing, crop comparison
-- **PostgreSQL** is shared between Node.js and Django
+### Key Architecture Decisions
+- **React** only calls **Node.js** — never Django directly
+- **Node.js** is the single source of truth for all application data
+- **Node.js** owns and manages all application tables in PostgreSQL
+- **Django** is a pure AI/ML service — receives data from Node, returns predictions
+- **Django** only owns 3 reference tables: `crops`, `market_prices`, `weather_cache`
+- **Django** never writes to application tables (users, farms, alerts etc.)
+
+---
+
+## 🗄️ Database Ownership
+
+### Django Owns (reference/ML data):
+```
+crops                    — Crop master data for ML models
+market_prices            — Crop market prices by state/district
+weather_cache            — Cached Open-Meteo API responses
+```
+
+### Node.js Owns (application data):
+```
+users                    — Farmer accounts & auth
+farms                    — Farm details (soil, location, land size)
+fields                   — Individual fields within a farm
+alerts                   — Generated weather alerts
+ai_suggestions           — AI-generated farming suggestions
+crop_comparison_results  — Saved crop comparison results
+notification_preferences — Per-user notification settings
+```
 
 ---
 
@@ -57,8 +86,8 @@ Django (port 8000)  ────────────────────
 |---|---|
 | Frontend | React.js, Vite, Tailwind CSS, Recharts, Socket.io-client |
 | App Backend | Node.js, Express.js, JWT, node-cron, Nodemailer, Socket.io |
-| AI Backend | Django, Django REST Framework, scikit-learn, XGBoost, pandas |
-| Database | PostgreSQL (shared by both backends) |
+| AI Backend | Django, Django REST Framework, scikit-learn, XGBoost, Prophet, pandas |
+| Database | PostgreSQL (Node owns app tables, Django owns reference tables) |
 | Weather API | Open-Meteo (free, no API key required) |
 | Notifications | Nodemailer (email) + Twilio (SMS) |
 | ML Models | Random Forest (crop suitability), XGBoost (yield prediction) |
@@ -87,12 +116,11 @@ cd farmsense-ai
 ```
 
 ### 2. PostgreSQL Database Setup
-Open pgAdmin or psql terminal and run:
+Open pgAdmin → Query Tool and run:
 ```sql
 CREATE DATABASE farmsense;
-CREATE USER farmsense_user WITH PASSWORD 'yourpassword';
-GRANT ALL PRIVILEGES ON DATABASE farmsense TO farmsense_user;
 ```
+> Use the `postgres` superuser for full permissions (recommended for development).
 
 ---
 
@@ -117,9 +145,15 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your database credentials
 
-# Run migrations (creates all tables in PostgreSQL)
-python manage.py makemigrations
+# Run migrations (creates only Django's 3 tables)
+python manage.py makemigrations crops
+python manage.py makemigrations weather
+python manage.py makemigrations accounts
+python manage.py makemigrations suggestions
 python manage.py migrate
+
+# Create Django admin superuser
+python manage.py createsuperuser
 
 # Load initial crop data
 python manage.py loaddata data/crops.json
@@ -145,6 +179,9 @@ npm install
 # Setup environment variables
 cp .env.example .env
 # Edit .env with your credentials
+
+# Create Node.js application tables in PostgreSQL
+# Open pgAdmin → farmsense DB → Query Tool → run server/db/schema.sql
 
 # Start Node.js server
 npm run dev
@@ -198,9 +235,9 @@ GET    /api/alerts?farm_id=x      Get active alerts
 PUT    /api/alerts/:id/read       Mark alert as read
 GET    /api/alerts/history        Get past alerts
 
-GET    /api/suggestions?farm_id=x Get AI suggestions (from Django)
-POST   /api/crops/compare         Compare crops (via Django ML)
-GET    /api/weather/forecast      Get weather forecast (via Django)
+GET    /api/suggestions?farm_id=x Get AI suggestions (Node fetches from Django, saves to DB)
+POST   /api/crops/compare         Compare crops (Node forwards to Django ML, saves result)
+GET    /api/weather/forecast      Get weather forecast (Node fetches from Django)
 ```
 
 #### Settings
@@ -210,53 +247,75 @@ PUT    /api/notifications/prefs   Update notification preferences
 
 ---
 
-### Django Endpoints (Internal — called by Node.js only)
+### Django Endpoints (Internal — called by Node.js only, protected by secret key)
 
 #### Weather
 ```
-GET    /api/weather/forecast/         Fetch 7-day forecast
-POST   /api/weather/check-alerts/     Generate weather alerts
+GET    /api/weather/forecast/         Fetch & return 7-day forecast (no DB write)
+POST   /api/weather/check-alerts/     Analyze weather → return alert list (no DB write)
 ```
 
 #### Crops & ML
 ```
-GET    /api/crops/list/               List all crops
-POST   /api/crops/compare/            ML crop comparison + profit
-GET    /api/crops/market-prices/      Get market prices
+GET    /api/crops/list/               List all crops from DB
+POST   /api/crops/compare/            ML crop comparison → return results (no DB write)
+GET    /api/crops/market-prices/      Get market prices from DB
 ```
 
 #### AI Suggestions
 ```
-POST   /api/suggestions/generate/     Generate AI suggestions
-GET    /api/suggestions/today/        Get today's suggestions
+POST   /api/suggestions/generate/     Run AI logic → return suggestions (no DB write)
 ```
 
----
-
-## 🗄️ Database Schema Overview
-
-```
-users                    — Farmer accounts
-farms                    — Farm details (soil, location, land size)
-fields                   — Individual fields within a farm
-crops                    — Crop master data
-market_prices            — Crop market prices by region
-weather_cache            — Cached weather API responses
-alerts                   — Generated weather alerts
-ai_suggestions           — AI-generated farming suggestions
-crop_comparison_results  — Saved crop comparison results
-notification_preferences — Per-user notification settings
-```
+> ⚠️ Django endpoints never write to application tables.
+> Node.js receives Django's response and saves it to PostgreSQL.
 
 ---
 
 ## 🤖 ML Models
 
-| Model | Algorithm | Purpose | Dataset |
+| Feature | Model | Dataset | Expected Performance |
 |---|---|---|---|
-| Crop Suitability | Random Forest | Score how suitable a crop is (0-100%) | Kaggle Crop Recommendation |
-| Yield Predictor | XGBoost | Predict yield in quintals/acre | data.gov.in |
-| Alert Engine | Rule-based | Generate weather alerts | No training needed |
+| 🌾 Crop Recommendation | Random Forest Classifier | Kaggle Crop Recommendation | ~95% accuracy |
+| 📈 Yield Prediction | XGBoost Regressor | Kaggle Crop Yield / data.gov.in | R² ~0.85 |
+| 🧪 Fertilizer Recommendation | Random Forest Classifier | Kaggle Fertilizer Prediction | ~92% accuracy |
+| 💧 Irrigation Recommendation | Random Forest Classifier | Kaggle Irrigation Prediction | ~90% accuracy |
+| 📊 Price Forecasting | Prophet | Kaggle Agricultural Commodity Prices | 30/60/90 day forecast |
+| ⚠️ Weather Alerts | Rule-based Engine | Open-Meteo live data | No training needed |
+
+---
+
+## 🔄 How a Request Works (Example: Crop Comparison)
+
+```
+1. Farmer clicks "Compare Crops" in React
+
+2. React → POST /api/crops/compare (Node.js)
+   Body: { farm_id, season, crop_ids[] }
+   Header: Authorization: Bearer <jwt>
+
+3. Node.js:
+   - Verifies JWT
+   - Gets farm soil/location data from PostgreSQL
+   - Calls Django internally:
+     POST /api/crops/compare/
+     Body: { soil, weather, crops, land_size }
+     Header: X-Internal-Key: secret
+
+4. Django:
+   - Verifies internal key
+   - Fetches weather from Open-Meteo
+   - Loads ML model (.pkl)
+   - Calculates profit & suitability scores
+   - Returns JSON result (does NOT save to DB)
+
+5. Node.js:
+   - Receives Django result
+   - Saves result to crop_comparison_results table
+   - Returns result to React
+
+6. React displays comparison table + charts
+```
 
 ---
 
@@ -268,12 +327,12 @@ PORT=5000
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=farmsense
-DB_USER=farmsense_user
-DB_PASSWORD=yourpassword
+DB_USER=postgres
+DB_PASSWORD=yourpostgrespassword
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRE=7d
 DJANGO_URL=http://localhost:8000
-DJANGO_INTERNAL_KEY=your_internal_secret
+DJANGO_INTERNAL_KEY=farmsense_internal_secret_2024
 EMAIL_USER=yourgmail@gmail.com
 EMAIL_PASS=your_gmail_app_password
 TWILIO_SID=your_twilio_sid
@@ -284,13 +343,13 @@ TWILIO_PHONE=+1234567890
 ### ai-engine/.env
 ```env
 DEBUG=True
-DJANGO_SECRET_KEY=your_django_secret
+DJANGO_SECRET_KEY=your_django_secret_key
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=farmsense
-DB_USER=farmsense_user
-DB_PASSWORD=yourpassword
-INTERNAL_API_KEY=your_internal_secret
+DB_USER=postgres
+DB_PASSWORD=yourpostgrespassword
+INTERNAL_API_KEY=farmsense_internal_secret_2024
 OPEN_METEO_URL=https://api.open-meteo.com/v1/forecast
 ```
 
@@ -301,7 +360,7 @@ OPEN_METEO_URL=https://api.open-meteo.com/v1/forecast
 | Role | Responsibility |
 |---|---|
 | Frontend Developer | React.js, UI/UX, Recharts, Socket.io client |
-| Node.js Developer | Express, JWT, PostgreSQL, Cron, Nodemailer |
+| Node.js Developer | Express, JWT, PostgreSQL schema, Cron, Nodemailer |
 | Django/ML Developer | Django DRF, ML models, Weather API, AI logic |
 
 ---
@@ -310,10 +369,10 @@ OPEN_METEO_URL=https://api.open-meteo.com/v1/forecast
 
 | Week | Tasks |
 |---|---|
-| Week 1 | Django setup + models + migrations + Node.js auth + farm routes |
-| Week 2 | ML model training + Django AI endpoints + alert engine |
-| Week 3 | Node ↔ Django connection + cron job + notifications + full backend testing |
-| Week 4 | React frontend + connect to backend + UI polish + deployment |
+| Week 1 | Django setup + 3 models (crops, market_prices, weather_cache) + Node.js auth + farm routes + PostgreSQL schema |
+| Week 2 | ML model training + Django AI endpoints (pure functions, no DB writes) + alert engine |
+| Week 3 | Node ↔ Django connection + Node saves AI results to DB + cron job + email/SMS notifications |
+| Week 4 | React frontend + connect to Node.js API + UI polish + deployment |
 
 ---
 
@@ -336,7 +395,7 @@ This project is built for educational purposes as a college group project.
 
 ## 🙏 Acknowledgements
 
-- [Open-Meteo](https://open-meteo.com/) — Free weather API
+- [Open-Meteo](https://open-meteo.com/) — Free weather API (no API key needed)
 - [Kaggle](https://kaggle.com/) — Crop recommendation dataset
 - [data.gov.in](https://data.gov.in/) — Indian agriculture datasets
 - [Agmarknet](https://agmarknet.gov.in/) — Crop market prices
