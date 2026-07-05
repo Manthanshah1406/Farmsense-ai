@@ -84,8 +84,8 @@ ai-engine/ml_models/*.model
 
 # Training data & notebooks (usually large)
 ai-engine/data/raw/
-*.csv
-!ai-engine/data/crops_sample.csv
+# *.csv
+# !ai-engine/data/crops_sample.csv
 *.xlsx
 *.json
 !ai-engine/data/crops.json
