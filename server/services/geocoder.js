@@ -80,6 +80,35 @@ const geocodeAddress = async (village, taluka, district, state, pincode) => {
             };
         }
 
+        console.log('[GEOCODER] Trying pincode only...');
+        const pincodeResponse = await axios.get(
+            'https://nominatim.openstreetmap.org/search',
+        {
+            params: {
+                postalcode: pincode,
+                country: 'India',
+                format: 'json',
+                limit: 1,
+            },
+            headers: {
+                'User-Agent': 'FarmSenseAI/1.0 (farmsense@gmail.com)'
+            },
+            timeout: 10000
+    }
+);
+
+    if (pincodeResponse.data && pincodeResponse.data.length > 0) {
+        const location = pincodeResponse.data[0];
+        console.log(`[GEOCODER] Pincode found: ${location.display_name}`);
+        return {
+            latitude: parseFloat(location.lat),
+            longitude: parseFloat(location.lon),
+            display_name: location.display_name,
+            success: true
+    };
+}
+
+
         // Nothing found — return null
         console.log('[GEOCODER] Location not found');
         return {

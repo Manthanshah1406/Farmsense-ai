@@ -50,12 +50,16 @@ app.use(express.urlencoded({ extended: true }));
 // ── Routes ────────────────────────────────────
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/farm',          require('./routes/farm'));
-app.use('/api/fields',        require('./routes/fields'));
+app.use('/api/farm',          require('./routes/fields'));  // ← farm/:id/fields
+app.use('/api/fields',        require('./routes/fields'));  // ← fields/update/:id
 app.use('/api/alerts',        require('./routes/alerts'));
 app.use('/api/suggestions',   require('./routes/suggestions'));
 app.use('/api/analysis',      require('./routes/analysis'));
 app.use('/api/crops',         require('./routes/crops'));
 app.use('/api/weather',       require('./routes/weather'));
+app.get('/api/weather/test', (req, res) => {
+    res.json({ message: 'weather route works' });
+});
 app.use('/api/notifications', require('./routes/notifications'));
 
 // ── Health Check ──────────────────────────────
@@ -81,6 +85,8 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`FarmSense server running on port ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/health`);
+
+    require('./services/scheduler');
 });
 
 module.exports = { app, io };

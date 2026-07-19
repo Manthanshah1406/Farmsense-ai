@@ -371,4 +371,48 @@ router.get('/profile-status', auth, async (req, res, next) => {
     }
 });
 
+// PUT /api/farm/coordinates
+// Manually set lat/lon if geocoding failed
+router.put('/coordinates', auth, requireProfile, [
+    body('latitude')
+        .notEmpty().withMessage('Latitude is required')
+        .isFloat({ min: 6, max: 38 }).withMessage('Invalid latitude for India'),
+    body('longitude')
+        .notEmpty().withMessage('Longitude is required')
+        .isFloat({ min: 68, max: 98 }).withMessage('Invalid longitude for India'),
+], async (req, res, next) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                errors: errors.array().map(e => ({
+                    field: e.path,
+                    message: e.msg
+                }))
+            });
+        }
+
+        const { latitude, longitude } = req.body;
+
+        await pool.query(
+            `UPDATE farms
+             SET latitude = $1,
+                 longitude = $2,
+                 updated_at = NOW()
+             WHERE user_id = $3`,
+            [latitude, longitude, req.user.id]
+        );
+
+        res.json({
+            success: true,
+            message: 'Coordinates updated successfully',
+            coordinates: { latitude, longitude }
+        });
+
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;

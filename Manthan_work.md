@@ -45,17 +45,17 @@ OS: Windows
 - [x] Step 8 — middleware/errorHandler.js
 - [x] Step 9 — routes/auth.js
 - [x] Step 10 — services/geocoder.js + routes/farm.js
-- [ ] Step 11 — routes/fields.js                ⬅️ NEXT
-- [ ] Step 12 — routes/alerts.js
-- [ ] Step 13 — routes/suggestions.js
-- [ ] Step 14 — routes/analysis.js
-- [ ] Step 15 — routes/crops.js
-- [ ] Step 16 — routes/weather.js
-- [ ] Step 17 — routes/notifications.js
-- [ ] Step 18 — services/geocoder.js
-- [ ] Step 19 — services/aiEngineClient.js
-- [ ] Step 20 — services/notifier.js
-- [ ] Step 21 — services/scheduler.js
+- [x] Step 11 — routes/fields.js                ⬅️ NEXT
+- [x] Step 12 — routes/alerts.js
+- [x] Step 13 — routes/suggestions.js
+- [x] Step 14 — routes/analysis.js
+- [x] Step 15 — routes/crops.js
+- [x] Step 16 — routes/weather.js
+- [x] Step 17 — routes/notifications.js
+- [x] Step 18 — services/geocoder.js
+- [x] Step 19 — services/aiEngineClient.js
+- [x] Step 20 — services/notifier.js
+- [x] Step 21 — services/scheduler.js
 
 ### Phase 3 — Auth Testing
 - [ ] Mailtrap setup
