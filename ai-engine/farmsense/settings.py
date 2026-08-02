@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     'weather',
     'crops',
     'suggestions',
-    'predictions',
 ]
 
 # ============================================

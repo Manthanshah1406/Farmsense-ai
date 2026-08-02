@@ -1,6 +1,5 @@
 from django.urls import path
-from .views import generate_suggestion
 
 urlpatterns = [
-    path("", generate_suggestion),
+    # Routes will be added later
 ]
