@@ -15,11 +15,15 @@ class InternalKeyMiddleware:
 
     def __call__(self, request):
 
-        # Skip check for Django admin panel
+    # Skip Django admin
         if request.path.startswith('/admin/'):
             return self.get_response(request)
 
-        # Check internal key for all /api/ routes
+        # Skip authentication endpoints
+        if request.path.startswith('/api/auth/'):
+            return self.get_response(request)
+
+        # Check internal key for remaining API routes
         if request.path.startswith('/api/'):
             key = request.headers.get('X-Internal-Key')
             if key != settings.INTERNAL_API_KEY:

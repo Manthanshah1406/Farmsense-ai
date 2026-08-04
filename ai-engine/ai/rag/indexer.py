@@ -23,7 +23,7 @@ import os
 import logging
 from pathlib import Path
 
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
@@ -45,14 +45,14 @@ class PDFIndexer:
         """Check if ChromaDB already exists to avoid re-indexing."""
         return os.path.exists(self.persist_directory) and os.listdir(self.persist_directory)
 
-    def get_all_pdfs(self) -> list[str]:
-        """Recursively find all PDFs in the knowledge base."""
-        pdf_files = []
+    def get_all_documents(self) -> list[str]:
+        """Recursively find all PDFs and MDs in the knowledge base."""
+        doc_files = []
         for root, _, files in os.walk(self.knowledge_base_dir):
             for file in files:
-                if file.lower().endswith('.pdf'):
-                    pdf_files.append(os.path.join(root, file))
-        return pdf_files
+                if file.lower().endswith(('.pdf', '.md')):
+                    doc_files.append(os.path.join(root, file))
+        return doc_files
 
     def index_documents(self):
         """Load, split, and store documents in ChromaDB."""
@@ -60,18 +60,24 @@ class PDFIndexer:
             logger.info(f"Vector store already exists at {self.persist_directory}. Skipping indexing.")
             return
 
-        pdf_files = self.get_all_pdfs()
-        if not pdf_files:
-            logger.warning(f"No PDFs found in {self.knowledge_base_dir}.")
+        doc_files = self.get_all_documents()
+        if not doc_files:
+            logger.warning(f"No documents found in {self.knowledge_base_dir}.")
             return
 
-        logger.info(f"Found {len(pdf_files)} PDFs. Starting indexing...")
+        logger.info(f"Found {len(doc_files)} documents. Starting indexing...")
         all_splits = []
 
-        for pdf_path in pdf_files:
-            logger.info(f"Processing: {pdf_path}")
+        for doc_path in doc_files:
+            logger.info(f"Processing: {doc_path}")
             try:
-                loader = PyPDFLoader(pdf_path)
+                if doc_path.lower().endswith('.pdf'):
+                    loader = PyPDFLoader(doc_path)
+                elif doc_path.lower().endswith('.md'):
+                    loader = TextLoader(doc_path, encoding='utf-8')
+                else:
+                    continue
+                
                 docs = loader.load()
                 splits = self.text_splitter.split_documents(docs)
                 all_splits.extend(splits)
@@ -95,3 +101,15 @@ class PDFIndexer:
             logger.info("Indexing complete.")
         else:
             logger.warning("No text extracted from PDFs.")
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    
+    # Resolve project root (ai directory)
+    base_dir = Path(__file__).resolve().parent.parent
+    kb_dir = os.path.join(base_dir, "knowledge_base")
+    db_dir = os.path.join(base_dir, "chroma_db")
+    
+    logger.info("--- Starting Standalone Indexer ---")
+    indexer = PDFIndexer(knowledge_base_dir=kb_dir, persist_directory=db_dir)
+    indexer.index_documents()

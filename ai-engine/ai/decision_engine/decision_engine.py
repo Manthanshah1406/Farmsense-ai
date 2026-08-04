@@ -60,7 +60,8 @@ class DecisionEngine:
         Coordinates the entire recommendation generation process.
         """
         print("\n[AI Module] Starting AI Recommendation Pipeline...")
-        # Ensure RAG is ready
+        # before searching in pdfs make sure rag is ready like connect to chromaDB,embedding model,retriver
+        # start ai system and load knowledge 
         self.initialize_rag()
 
         # Retrieve relevant context using the user query.
@@ -69,10 +70,19 @@ class DecisionEngine:
         irrigation = ml_predictions.get('irrigation_need', '')
         yield_val = ml_predictions.get('predicted_yield', '')
 
-        # Construct a retrieval query that strongly emphasizes the predicted crop name
-        search_query = f"Crop: {crop}. Information specifically about {crop} farming, {crop} diseases, {crop} {fertilizer} fertilizer usage, {crop} {irrigation} irrigation, and {crop} yield of {yield_val}."
-        if user_query:
-            search_query += f" Specific user question regarding {crop}: {user_query}"
+        # Construct a targeted retrieval query based on user intent
+        user_q_lower = user_query.lower() if user_query else ""
+        
+        if any(kw in user_q_lower for kw in ["disease", "pest", "sick", "fungus", "blight"]):
+            search_query = f"{crop} disease prevention pests management {user_query}"
+        elif any(kw in user_q_lower for kw in ["fertilizer", "nutrient", "npk", "urea", "compost"]):
+            search_query = f"{crop} {fertilizer} fertilizer nutrient application {user_query}"
+        elif any(kw in user_q_lower for kw in ["irrigation", "water", "drip", "sprinkler"]):
+            search_query = f"{crop} {irrigation} irrigation water management {user_query}"
+        elif any(kw in user_q_lower for kw in ["rotation", "next crop"]):
+            search_query = f"{crop} crop rotation sequence {user_query}"
+        else:
+            search_query = f"{crop} farming best practices {crop} yield {yield_val} {user_query}".strip()
 
         print(f"[AI Module] Searching Knowledge Base for: '{search_query}'...")
         rag_context = self.retriever.search(search_query, k=5, target_crop=crop)

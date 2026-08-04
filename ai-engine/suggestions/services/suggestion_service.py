@@ -30,9 +30,13 @@ class SuggestionService:
         predicted_yield = yield_service.predict(yield_data)
 
         weather = None
-
         if latitude and longitude:
-            weather = weather_service.get_weather(latitude, longitude)
+            try:
+                weather = weather_service.get_weather(latitude, longitude)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to fetch weather: {e}")
+                weather = None
 
         ml_predictions = {
             "recommended_crop": crop,

@@ -2,67 +2,133 @@
 ==========================================================
 File: prompt_builder.py
 
-What:
-    Builds prompts for the AI model.
-
-Why:
-    We don't want prompt creation logic inside the
-    Decision Engine.
+Purpose:
+    Builds the prompt which is sent to Ollama.
 
 Responsibilities:
-    - Build AI prompt
-    - Combine context (ML predictions, Weather, History, RAG, Query)
-    - Return final prompt
+    - Combine ML predictions
+    - Add Weather information
+    - Add Farmer History
+    - Add RAG context
+    - Return one final prompt
 ==========================================================
 """
+
 import json
+
 
 class PromptBuilder:
 
     def build(self, user_query, ml_predictions, weather, history, rag_context):
-        
+
         prompt = f"""
-You are an expert agricultural AI assistant (FarmSense AI).
-Your task is to provide comprehensive and accurate agricultural advice based on the provided context.
-IMPORTANT: You MUST prioritize the Machine Learning Predictions above all else. They are the core of this project. Use the RAG Knowledge Base and Weather to support and explain the ML predictions, but never contradict the ML models.
+You are FarmSense AI, an expert agricultural assistant.
 
-=== STRICT RULES ===
-1. Target Crop Lockdown: You are assisting a farmer who is explicitly growing the crop: {ml_predictions.get('recommended_crop', 'Unknown')}.
-2. Context Validation: If the Knowledge Base references provide information about a different crop (e.g. Rice when the predicted crop is Coffee), you MUST completely ignore that information.
-3. Fallback Instruction: If no relevant chunk exists for the target crop in the Knowledge Base, you must explicitly state: "No crop-specific information was found in the knowledge base." Do NOT hallucinate or substitute another crop's information.
-4. No Mixing: The final response must never mix information from different crops.
+The Machine Learning predictions are the SOURCE OF TRUTH.
+Never change them.
+Never guess another crop or fertilizer.
+Use the Knowledge Base only to explain the ML predictions.
 
-=== CONTEXT ===
+======================
+STRICT RULES
+======================
 
-User Query:
-{user_query if user_query else 'No specific query provided.'}
+1. The farmer's predicted crop is:
+   {ml_predictions.get("recommended_crop", "Unknown")}
 
-Machine Learning Predictions:
+2. You MUST use the following ML predictions exactly as they are.
+
+   Predicted Crop:
+   {ml_predictions.get("recommended_crop", "Unknown")}
+
+   Predicted Fertilizer:
+   {ml_predictions.get("recommended_fertilizer", "Unknown")}
+
+   Predicted Irrigation Need:
+   {ml_predictions.get("irrigation_need", "Unknown")}
+
+   Predicted Yield:
+   {ml_predictions.get("predicted_yield", "Unknown")}
+
+3. Never replace the crop name with the fertilizer name.
+
+4. If the Knowledge Base contains information about another crop,
+   ignore it completely.
+
+5. If the Knowledge Base (RAG) says "No additional references.", you MUST set the fields to EXACTLY:
+   - crop_rotation: "No crop-specific crop rotation information was found in the knowledge base."
+   - disease_prevention: "No crop-specific disease prevention information was found in the knowledge base."
+   Do NOT leave them as empty strings (""). Do NOT invent or guess diseases or rotations.
+
+6. The `explanation` field must NEVER be an empty string. If no RAG context was found, it must summarize the ML predictions and clearly state that no further RAG context was found. It must NEVER mention any crops other than the predicted crop.
+
+7. Never mix information from different crops.
+
+======================
+USER QUERY
+======================
+
+{user_query if user_query else "No specific query provided."}
+
+======================
+ML PREDICTIONS
+======================
+
 {json.dumps(ml_predictions, indent=2)}
 
-Weather Forecast / Current Weather:
-{json.dumps(weather, indent=2) if weather else 'Not available'}
+======================
+WEATHER
+======================
 
-Farmer History:
-{json.dumps(history, indent=2) if history else 'Not available'}
+{json.dumps(weather, indent=2) if weather else "Not available"}
 
-Knowledge Base (RAG) References:
-{rag_context if rag_context else 'No additional references.'}
+======================
+FARMER HISTORY
+======================
 
-=== TASK ===
-Using the context provided above, generate a detailed recommendation. 
-You must output a raw JSON object (without Markdown formatting or code blocks) with the following keys exactly:
+{json.dumps(history, indent=2) if history else "Not available"}
+
+======================
+KNOWLEDGE BASE (RAG)
+======================
+
+{rag_context if rag_context else "No additional references."}
+
+======================
+OUTPUT FORMAT
+======================
+
+Return ONLY a valid JSON object.
+
+Do not return Markdown.
+Do not return explanations outside JSON.
+
+The values MUST follow these rules:
+
+- crop_recommendation MUST be exactly the predicted crop from the ML model.
+- fertilizer_recommendation MUST be exactly the predicted fertilizer from the ML model.
+- irrigation_advice should explain the predicted irrigation need.
+- crop_rotation MUST NEVER be an empty string (""). If RAG provides info, use it. If not, use the fallback message from Rule 5.
+- disease_prevention MUST NEVER be an empty string (""). If RAG provides info, use it. If not, use the fallback message from Rule 5.
+- explanation MUST NEVER be an empty string (""). It should explain WHY the ML predictions make sense using the RAG context.
+- confidence should be a number between 0 and 100.
+- sources_used should contain only the PDF names actually used.
+
+Return this JSON structure exactly:
+
 {{
-  "crop_recommendation": "string: Your recommendation for the crop based on ML and context.",
-  "fertilizer_recommendation": "string: Your recommendation for fertilizer.",
-  "irrigation_advice": "string: Advice on how and when to irrigate.",
-  "crop_rotation": "string: Suggestions for crop rotation.",
-  "disease_prevention": "string: Tips for disease prevention based on crop and weather.",
-  "explanation": "string: Explain the reasoning behind your overall recommendations.",
-  "confidence": "number: Estimated confidence level between 0 and 100 based on data quality.",
-  "sources_used": ["list of strings: Sources from the RAG context that you used"]
+  "crop_recommendation": "",
+  "fertilizer_recommendation": "",
+  "irrigation_advice": "",
+  "crop_rotation": "",
+  "disease_prevention": "",
+  "explanation": "",
+  "confidence": 95,
+  "sources_used": []
 }}
 """
+
         return prompt.strip()
+
 
 prompt_builder = PromptBuilder()

@@ -7,6 +7,7 @@ from rest_framework import status
 
 from .serializers import SuggestionSerializer
 from .services.suggestion_service import suggestion_service
+from weather.services.geocode_service import geocode_service
 
 
 @api_view(["POST"])
@@ -84,11 +85,17 @@ def generate_suggestion(request):
         "Pesticide": data["Pesticide"],
     }
 
+    # Geocode the area to get coordinates
+    area_name = data.get("area", "")
+    latitude, longitude = geocode_service.get_coordinates(area_name)
+
     result = suggestion_service.generate(
         crop_data,
         fertilizer_data,
         irrigation_data,
         yield_data,
+        latitude=latitude,
+        longitude=longitude,
         user_query=data.get("user_query", ""),
         history=data.get("history", {})
     )

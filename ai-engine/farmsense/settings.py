@@ -108,8 +108,7 @@ REST_FRAMEWORK = {
 # CORS — Allow Node.js to call Django
 # ============================================
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5000',    # Node.js server
-    'http://127.0.0.1:5000',
+    "http://localhost:5173",
 ]
 
 # Internal API Key (Node.js uses this to call Django)
