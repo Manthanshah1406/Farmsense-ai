@@ -138,7 +138,7 @@ function SoilProfileSection({ farm, onUpdated, isDemo, onShowInspectionModal }) 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
   const handleSave = async () => {
-    if (!form.npk_nitrogen || !form.npk_phosphorus || !form.npk_potassium || !form.ph_level) {
+    if (form.npk_nitrogen === '' || form.npk_phosphorus === '' || form.npk_potassium === '' || form.ph_level === '') {
       setError('All four values are required.')
       return
     }
@@ -154,7 +154,12 @@ function SoilProfileSection({ farm, onUpdated, isDemo, onShowInspectionModal }) 
       setEditing(false)
       onUpdated()
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save soil profile.')
+      const data = err.response?.data;
+      if (data?.errors) {
+        setError(data.errors.map(e => e.message).join(' | '));
+      } else {
+        setError(data?.error || 'Failed to save soil profile.')
+      }
     } finally {
       setSaving(false)
     }

@@ -36,11 +36,28 @@ class CropRecommendationService:
             data["rainfall"],
         ]]
 
-        prediction = self.model.predict(features)[0]
-
-        crop = self.encoder.inverse_transform([prediction])[0]
-
-        return crop
+        # Get probabilities for all classes
+        probabilities = self.model.predict_proba(features)[0]
+        
+        # Get the indices of the top 3 probabilities in descending order
+        top_indices = probabilities.argsort()[-3:][::-1]
+        
+        top_crops = []
+        for idx in top_indices:
+            crop_name = self.encoder.inverse_transform([idx])[0]
+            score = round(float(probabilities[idx]) * 100, 1)
+            # Only include if score > 0
+            if score > 0:
+                top_crops.append({"crop": crop_name, "score": score})
+        
+        # Fallback if no crops found (shouldn't happen with softmax)
+        if not top_crops:
+            top_crops = [{"crop": "Unknown", "score": 100}]
+            
+        return {
+            "recommended_crop": top_crops[0]["crop"],
+            "all_crop_recommendations": top_crops
+        }
 
 
 crop_service = CropRecommendationService()

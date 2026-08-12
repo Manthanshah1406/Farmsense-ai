@@ -47,6 +47,7 @@ const CROP_DURATION_DAYS = {
 
 const getHarvestDate = (sowDate, cropName) => {
     if (!sowDate || !cropName) return null;
+    if (typeof cropName !== 'string') cropName = String(cropName);
     const duration = CROP_DURATION_DAYS[cropName.toLowerCase()] || 120;
     const harvest = new Date(sowDate);
     harvest.setDate(harvest.getDate() + duration);

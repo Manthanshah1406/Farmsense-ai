@@ -31,7 +31,7 @@ export default function SidebarWeather() {
   }, [])
 
   if (loading) return (
-    <div className="px-3 py-3 mt-auto border-t border-gray-100">
+    <div className="px-3 py-3 border-t border-gray-100">
       <div className="h-3 w-24 bg-gray-100 rounded mb-2 animate-pulse" />
       <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
     </div>
@@ -41,7 +41,7 @@ export default function SidebarWeather() {
 
   return (
     <div
-      className="mt-auto border-t border-gray-100 px-3 pt-3 pb-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-b-xl"
+      className="border-t border-gray-100 px-3 pt-3 pb-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-b-xl"
       onClick={() => navigate('/weather')}
       title="View full forecast"
     >

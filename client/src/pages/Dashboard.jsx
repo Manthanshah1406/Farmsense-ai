@@ -71,7 +71,19 @@ export default function Dashboard() {
     try {
       setRunningAnalysis(true)
       await runAIAnalysis()
-      window.location.reload()
+      
+      // Fetch fresh data seamlessly instead of full page reload
+      const id = farm?.id
+      const [a, s, an] = await Promise.all([
+        getAlerts(id),
+        getSuggestions(id),
+        getLatestAnalysis(),
+      ])
+      
+      setAlerts(a.data.alerts || [])
+      setSuggestions(s.data.suggestions || [])
+      if (an.data.has_analysis) setLatestAnalysis(an.data.analysis)
+      
     } catch (err) {
       const msg = err.response?.data?.error || 'Failed to run AI analysis'
       setAnalysisError(msg)

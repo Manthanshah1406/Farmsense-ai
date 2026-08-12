@@ -62,6 +62,7 @@ const CROP_PRICES = {
 
 const getMarketPrice = (cropName) => {
     if (!cropName) return 0;
+    if (typeof cropName !== 'string') cropName = String(cropName);
     const key = cropName.toLowerCase().replace(/[\s\-_]/g, '');
     // Direct match
     if (CROP_PRICES[key]) return CROP_PRICES[key];
@@ -85,12 +86,39 @@ const INPUT_COST_PER_ACRE = {
 
 const getInputCost = (cropName, area) => {
     if (!cropName || !area) return 0;
+    if (typeof cropName !== 'string') cropName = String(cropName);
     const key = cropName.toLowerCase().replace(/[\s\-_]/g, '');
     let costPerAcre = INPUT_COST_PER_ACRE.default;
     for (const [k, v] of Object.entries(INPUT_COST_PER_ACRE)) {
         if (key.includes(k) || k.includes(key)) { costPerAcre = v; break; }
     }
     return Math.round(costPerAcre * area);
+};
+
+// Calculate a yield multiplier based on NPK and pH values
+// Output is roughly 0.7 (poor soil) to 1.3 (optimal soil)
+const getSoilHealthModifier = (farm) => {
+    let score = 1.0;
+
+    // N (Nitrogen) - Optimal ~ 50-100
+    if (farm.npk_nitrogen < 20) score -= 0.1;
+    else if (farm.npk_nitrogen > 40 && farm.npk_nitrogen <= 100) score += 0.1;
+    else if (farm.npk_nitrogen > 130) score -= 0.05; // Over-fertilized
+
+    // P (Phosphorus) - Optimal ~ 40-80
+    if (farm.npk_phosphorus < 20) score -= 0.1;
+    else if (farm.npk_phosphorus > 35 && farm.npk_phosphorus <= 80) score += 0.1;
+
+    // K (Potassium) - Optimal ~ 40-80
+    if (farm.npk_potassium < 20) score -= 0.1;
+    else if (farm.npk_potassium > 35 && farm.npk_potassium <= 80) score += 0.1;
+
+    // pH - Optimal ~ 6.0-7.5
+    if (farm.ph_level < 5.5 || farm.ph_level > 8.0) score -= 0.15;
+    else if (farm.ph_level >= 6.0 && farm.ph_level <= 7.5) score += 0.05;
+
+    // Clamp between 0.6 and 1.4 to prevent wild swings
+    return Math.max(0.6, Math.min(1.4, score));
 };
 
 // ==============================================
@@ -243,7 +271,8 @@ router.post('/run', auth, requireProfile, async (req, res, next) => {
         const preds = aiResult.ml_predictions;
 
         // 1 t/ha = 4.0468 quintals/acre
-        const yield_t_ha = preds.predicted_yield || 0;
+        const soilModifier = getSoilHealthModifier(farm);
+        const yield_t_ha = (preds.predicted_yield || 0) * soilModifier;
         const yield_q_acre = Math.round(yield_t_ha * 4.0468 * 10) / 10;
         const total_yield_quintals = Math.round(yield_q_acre * farm.farm_area);
         const market_price_per_quintal = getMarketPrice(preds.recommended_crop || farm.current_crop);
@@ -253,7 +282,7 @@ router.post('/run', auth, requireProfile, async (req, res, next) => {
         const analysisData = {
             recommended_crop:          preds.recommended_crop || 'Unknown',
             crop_suitability_score:    0, // not provided by basic model
-            all_crop_recommendations:  [{ crop: preds.recommended_crop, score: 100 }],
+            all_crop_recommendations:  preds.all_crop_recommendations || [{ crop: preds.recommended_crop, score: 100 }],
             recommended_fertilizer:    preds.recommended_fertilizer || 'Unknown',
             fertilizer_quantity:       'Based on AI recommendation',
             fertilizer_timing:         'Based on AI recommendation',

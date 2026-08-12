@@ -23,9 +23,17 @@ class SuggestionService:
         if history is None:
             history = {}
 
-        crop = crop_service.predict(crop_data)
+        crop_result = crop_service.predict(crop_data)
+        crop = crop_result["recommended_crop"]
+        all_crop_recommendations = crop_result["all_crop_recommendations"]
+        
         fertilizer = fertilizer_service.predict(fertilizer_data)
         irrigation = irrigation_service.predict(irrigation_data)
+        
+        # Use recommended crop for yield prediction if the user hasn't specified a valid one
+        if yield_data.get("Crop") == "Unknown" or not yield_data.get("Crop"):
+            yield_data["Crop"] = crop
+            
         predicted_yield = yield_service.predict(yield_data)
 
         weather = None
@@ -34,6 +42,7 @@ class SuggestionService:
 
         ml_predictions = {
             "recommended_crop": crop,
+            "all_crop_recommendations": all_crop_recommendations,
             "recommended_fertilizer": fertilizer,
             "irrigation_need": irrigation,
             "predicted_yield": predicted_yield,
@@ -68,9 +77,17 @@ class SuggestionService:
         """
 
         # ── Run all ML models ─────────────────────────────────────────────
-        crop = crop_service.predict(crop_data)
+        crop_result = crop_service.predict(crop_data)
+        crop = crop_result["recommended_crop"]
+        all_crop_recommendations = crop_result["all_crop_recommendations"]
+        
         fertilizer = fertilizer_service.predict(fertilizer_data)
         irrigation = irrigation_service.predict(irrigation_data)
+        
+        # Use recommended crop for yield prediction if current crop is unknown
+        if yield_data.get("Crop") == "Unknown" or not yield_data.get("Crop"):
+            yield_data["Crop"] = crop
+
         predicted_yield = yield_service.predict(yield_data)
 
         weather = None
@@ -79,6 +96,7 @@ class SuggestionService:
 
         ml_predictions = {
             "recommended_crop": crop,
+            "all_crop_recommendations": all_crop_recommendations,
             "recommended_fertilizer": fertilizer,
             "irrigation_need": irrigation,
             "predicted_yield": predicted_yield,

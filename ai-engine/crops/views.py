@@ -28,7 +28,8 @@ def crop_recommendation(request):
     prediction = crop_service.predict(serializer.validated_data)
 
     return Response({
-        "recommended_crop": prediction
+        "recommended_crop": prediction["recommended_crop"],
+        "all_crop_recommendations": prediction["all_crop_recommendations"]
     })
 
 @api_view(["POST"])

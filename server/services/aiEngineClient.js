@@ -155,6 +155,22 @@ const generateSuggestions = async (farm, weatherForecast, userQuery = "", histor
         const hum = weatherForecast?.weather?.humidity || 60;
         const rain = weatherForecast?.weather?.rainfall || 0;
         
+        const daily = weatherForecast?.weather?.daily;
+        let totalRain7Days = rain * 7;
+        let avgTemp7Days = temp;
+        let annualRainfallEstimate = rain > 0 ? rain * 100 : 800;
+
+        if (daily && daily.length > 0) {
+            const daysToUse = Math.min(7, daily.length);
+            const first7 = daily.slice(0, daysToUse);
+            totalRain7Days = first7.reduce((sum, d) => sum + (d.rainfall || 0), 0);
+            avgTemp7Days = first7.reduce((sum, d) => sum + ((d.temp_max + d.temp_min) / 2 || temp), 0) / daysToUse;
+            
+            const total16 = daily.reduce((sum, d) => sum + (d.rainfall || 0), 0);
+            // 16 days extrapolating to 365 days
+            annualRainfallEstimate = Math.max(400, (total16 / daily.length) * 365);
+        }
+        
         const payload = {
             user_query: userQuery,
             history: history,
@@ -163,10 +179,11 @@ const generateSuggestions = async (farm, weatherForecast, userQuery = "", histor
             N: farm.npk_nitrogen || 50,
             P: farm.npk_phosphorus || 50,
             K: farm.npk_potassium || 50,
-            temperature: temp,
-            humidity: hum,
+            // Clamp weather to avoid ML edge cases (e.g., >90 humidity or <40 rainfall locks to muskmelon)
+            temperature: Math.min(35, Math.max(20, temp)),
+            humidity: Math.min(80, Math.max(40, hum)),
             ph: farm.ph_level || 6.5,
-            rainfall: rain > 0 ? rain * 30 : 100, // estimate monthly, fallback to avoid 0
+            rainfall: Math.max(70, Math.min(200, rain > 0 ? 100 + (rain * 10) : 100)),
 
             // Fertilizer
             Soil_Type: farm.soil_type || 'Loamy',
@@ -205,11 +222,11 @@ const generateSuggestions = async (farm, weatherForecast, userQuery = "", histor
 
             // Yield
             Crop_Year: new Date().getFullYear(),
-            State: farm.state || 'Unknown',
+            State: farm.state || 'Karnataka', // Provide default valid state
             Area: farm.farm_area || 1,
-            Annual_Rainfall: 800,
-            Fertilizer: 50,
-            Pesticide: 2,
+            Annual_Rainfall: annualRainfallEstimate,
+            Fertilizer: (farm.farm_area || 1) * 100, // Adjust per area
+            Pesticide: (farm.farm_area || 1) * 0.3, // Adjust per area
 
             // Location (for weather in pest risk)
             latitude: farm.latitude || null,
@@ -236,19 +253,32 @@ const generateCategorizedSuggestions = async (farm, weatherForecast) => {
         const hum  = weatherForecast?.weather?.humidity || 60;
         const rain = weatherForecast?.weather?.rainfall || 0;
 
-        // Calculate 7-day forecast totals/averages
+        const daily = weatherForecast?.weather?.daily;
         let totalRain7Days = rain * 7;
         let avgTemp7Days = temp;
+        let annualRainfallEstimate = rain > 0 ? rain * 100 : 800;
+
+        if (daily && daily.length > 0) {
+            const daysToUse = Math.min(7, daily.length);
+            const first7 = daily.slice(0, daysToUse);
+            totalRain7Days = first7.reduce((sum, d) => sum + (d.rainfall || 0), 0);
+            avgTemp7Days = first7.reduce((sum, d) => sum + ((d.temp_max + d.temp_min) / 2 || temp), 0) / daysToUse;
+            
+            const total16 = daily.reduce((sum, d) => sum + (d.rainfall || 0), 0);
+            // 16 days extrapolating to 365 days
+            annualRainfallEstimate = Math.max(400, (total16 / daily.length) * 365);
+        }
 
         const payload = {
             // Crop Recommendation
             N: farm.npk_nitrogen || 50,
             P: farm.npk_phosphorus || 50,
             K: farm.npk_potassium || 50,
-            temperature: temp,
-            humidity: hum,
+            // Clamp weather to avoid ML edge cases (e.g., >90 humidity or <40 rainfall locks to muskmelon)
+            temperature: Math.min(35, Math.max(20, temp)),
+            humidity: Math.min(80, Math.max(40, hum)),
             ph: farm.ph_level || 6.5,
-            rainfall: rain > 0 ? rain * 30 : 100, // fallback to avoid 0
+            rainfall: Math.max(70, Math.min(200, rain > 0 ? 100 + (rain * 10) : 100)),
 
             // Fertilizer
             Soil_Type: farm.soil_type || 'Loamy',
@@ -285,11 +315,11 @@ const generateCategorizedSuggestions = async (farm, weatherForecast) => {
 
             // Yield
             Crop_Year: new Date().getFullYear(),
-            State: farm.state || 'Unknown',
+            State: farm.state || 'Karnataka',
             Area: farm.farm_area || 1,
-            Annual_Rainfall: 800,
-            Fertilizer: 50,
-            Pesticide: 2,
+            Annual_Rainfall: annualRainfallEstimate,
+            Fertilizer: (farm.farm_area || 1) * 100,
+            Pesticide: (farm.farm_area || 1) * 0.3,
 
             // Location for weather-based pest risk
             latitude: farm.latitude || null,

@@ -45,7 +45,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav links */}
-      <nav className="flex flex-col gap-0.5 px-3">
+      <nav className="flex flex-col gap-0.5 px-3 flex-1">
         {links.map(({ icon, name, path }) => (
           <NavLink
             key={path}
@@ -72,13 +72,13 @@ export default function Sidebar() {
 
       {/* Demo placeholder */}
       {isDemo && (
-        <div className="mx-4 mt-auto mb-4 bg-amber-50/50 border border-amber-100 rounded-xl p-3">
+        <div className="mx-4 mb-4 bg-amber-50/50 border border-amber-100 rounded-xl p-3">
           <p className="text-[10px] text-amber-700 font-semibold uppercase tracking-wider mb-1">{t('sidebar.demo_mode')}</p>
           <p className="text-xs text-amber-600/80 font-body">Viewing read-only sample farm data.</p>
         </div>
       )}
 
-      <div className="p-4 mt-auto border-t border-gray-100">
+      <div className="p-4 border-t border-gray-100">
         <button 
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors text-sm font-medium group"
