@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from 'react-i18next'
 
 export default function Navbar({ onToggleMobileSidebar }) {
   const { user, logout } = useAuth()
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const [showLang, setShowLang] = useState(false)
 
   const changeLanguage = (lng) => {
@@ -15,9 +17,9 @@ export default function Navbar({ onToggleMobileSidebar }) {
   if (!user) return null
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 h-14 flex items-center justify-between px-4 sm:px-6 w-full shrink-0">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 h-14 flex items-center justify-between px-3 sm:px-6 w-full shrink-0">
       {/* Left side: Mobile menu toggle / Brand Logo */}
-      <div className="flex items-center gap-3 lg:hidden">
+      <div className="flex items-center gap-2 sm:gap-3 lg:hidden">
         {onToggleMobileSidebar && (
           <button
             onClick={onToggleMobileSidebar}
@@ -27,19 +29,31 @@ export default function Navbar({ onToggleMobileSidebar }) {
             <span className="text-xl">☰</span>
           </button>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="text-xl">🌾</span>
-          <span className="font-heading font-bold text-primary text-base">FarmSense AI</span>
+          <span className="font-heading font-bold text-primary text-base truncate max-w-[130px] sm:max-w-none">FarmSense AI</span>
         </div>
       </div>
 
-      {/* Right side: All navbar controls aligned to the right side */}
-      <div className="ml-auto flex items-center gap-3 sm:gap-5">
-        {/* Language Switcher */}
+      {/* Right side controls */}
+      <div className="ml-auto flex items-center gap-2 sm:gap-4">
+        {/* User profile avatar & name — clickable, navigates to Settings */}
+        <button
+          onClick={() => navigate('/settings')}
+          className="flex items-center gap-1.5 sm:gap-2 bg-gray-50/80 p-1 md:px-2.5 md:py-1 rounded-full border border-gray-100 cursor-pointer hover:border-primary/30 hover:shadow-sm transition-all"
+          title="Go to Settings"
+        >
+          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs sm:text-sm font-bold text-primary shrink-0">
+            {user.name?.[0]?.toUpperCase()}
+          </div>
+          <span className="hidden md:inline text-xs sm:text-sm font-medium text-gray-700 font-body truncate max-w-[120px]">{user.name}</span>
+        </button>
+
+        {/* Language Switcher — Placed at Far Right on Mobile */}
         <div className="relative">
           <button 
             onClick={() => setShowLang(!showLang)}
-            className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-600 hover:text-primary transition-colors bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 shadow-sm hover:shadow"
+            className="flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-600 hover:text-primary transition-colors bg-gray-50 px-2.5 sm:px-3 py-1.5 rounded-full border border-gray-100 shadow-sm hover:shadow"
           >
             <span>🌐</span>
             <span className="uppercase font-semibold">{i18n.language?.split('-')[0] || 'en'}</span>
@@ -57,18 +71,10 @@ export default function Navbar({ onToggleMobileSidebar }) {
           )}
         </div>
 
-        {/* User profile avatar & name */}
-        <div className="flex items-center gap-2 bg-gray-50/80 px-2.5 py-1 rounded-full border border-gray-100">
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs sm:text-sm font-bold text-primary shrink-0">
-            {user.name?.[0]?.toUpperCase()}
-          </div>
-          <span className="text-xs sm:text-sm font-medium text-gray-700 font-body max-w-[120px] sm:max-w-none truncate">{user.name}</span>
-        </div>
-
-        {/* Logout button */}
+        {/* Logout button — Hidden on Mobile (accessible via Mobile Drawer Sidebar) */}
         <button
           onClick={logout}
-          className="text-xs font-medium text-gray-400 hover:text-red-600 transition-colors px-2 py-1 rounded-md hover:bg-red-50"
+          className="hidden sm:block text-xs font-medium text-gray-400 hover:text-red-600 transition-colors px-2 py-1 rounded-md hover:bg-red-50"
         >
           Logout
         </button>
