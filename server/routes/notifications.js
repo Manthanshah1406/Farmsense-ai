@@ -86,6 +86,18 @@ router.put('/prefs', auth, [
             alert_types,
         } = req.body;
 
+        // Prevent enabling SMS alerts if user does not have a valid phone number
+        if (sms_alerts === true) {
+            const userResult = await pool.query('SELECT phone FROM users WHERE id = $1', [req.user.id]);
+            const userPhone = userResult.rows[0]?.phone;
+            if (!userPhone || userPhone.trim() === '' || userPhone === '0000000000') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Please add a valid phone number to your profile before enabling SMS notifications.'
+                });
+            }
+        }
+
         // 2. Validate alert_types values
         const VALID_ALERT_TYPES = [
             'heavy_rain',

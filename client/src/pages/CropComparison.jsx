@@ -11,6 +11,7 @@ const SEASONS = ['Kharif', 'Rabi', 'Zaid']
 
 export default function CropComparison() {
   const { isDemo }            = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [season, setSeason]   = useState('Kharif')
   const [landSize, setLandSize] = useState('')
   const [availableCrops, setAvailableCrops] = useState([])
@@ -76,9 +77,9 @@ export default function CropComparison() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
+        <Navbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
         {isDemo && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
             <p className="text-xs text-amber-700 font-body">🧪 <strong>Demo Mode</strong> — clicking Compare will return sample ML results</p>

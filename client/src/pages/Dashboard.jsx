@@ -22,6 +22,7 @@ export default function Dashboard() {
   const { t } = useTranslation()
   const { user, isDemo } = useAuth()
   const { liveAlerts, dismissAlert } = useSocket() || {}
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [farm, setFarm]             = useState(null)
   const [farmStats, setFarmStats]   = useState(null)
   const [forecast, setForecast]     = useState([])
@@ -93,13 +94,14 @@ export default function Dashboard() {
   }
 
   const unreadAlerts   = alerts.filter((a) => !a.is_read).length
-  const profileComplete = farm && (farm.profile_completed ?? user?.profile_completed)
+  const profileComplete = !!farm
+  const hasSoil = !!(farm?.npk_nitrogen && farm?.npk_phosphorus && farm?.npk_potassium && farm?.ph_level)
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
+        <Navbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
 
         {/* Demo mode banner */}
         {isDemo && (
@@ -144,10 +146,33 @@ export default function Dashboard() {
                 </div>
               </div>
               <a
-                href="/farm-profile"
+                href="/onboarding"
                 className="btn-primary text-sm whitespace-nowrap shrink-0"
               >
-                Update Farm Profile →
+                Complete Farm Setup →
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* ── Soil test report incomplete banner ── */}
+        {!isDemo && !loading && profileComplete && !hasSoil && (
+          <div className="bg-gradient-to-r from-warning/10 to-amber-500/5 border-b border-warning/20 px-4 py-4">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🧪</span>
+                <div>
+                  <p className="font-semibold text-gray-900 font-body">Enter soil tests reports</p>
+                  <p className="text-sm text-gray-600 font-body">
+                    Please enter your soil test values (N, P, K and pH) to unlock AI crop recommendations, yield predictions, and advanced suggestions.
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/farm-profile"
+                className="bg-warning text-white rounded-lg px-6 py-3 font-body font-medium hover:bg-warning/90 active:scale-[0.98] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-warning/40 text-sm whitespace-nowrap shrink-0"
+              >
+                Enter Soil Test Reports →
               </a>
             </div>
           </div>
@@ -183,8 +208,9 @@ export default function Dashboard() {
             {!isDemo && !loading && profileComplete && (
               <button
                 onClick={handleRunAnalysis}
-                disabled={runningAnalysis}
-                className="btn-primary flex items-center gap-2"
+                disabled={runningAnalysis || !hasSoil}
+                className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!hasSoil ? "Enter soil test report to run analysis" : ""}
               >
                 {runningAnalysis ? 'Running...' : '🤖 Run AI Analysis'}
               </button>

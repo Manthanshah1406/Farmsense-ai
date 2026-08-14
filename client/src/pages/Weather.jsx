@@ -35,6 +35,7 @@ const severityIcon = { critical: '🚨', warning: '⚠️', positive: '✅' }
 
 export default function Weather() {
   const navigate          = useNavigate()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [data, setData]   = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -57,9 +58,9 @@ export default function Weather() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
+        <Navbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full">
 
           {/* Header */}
@@ -86,7 +87,7 @@ export default function Weather() {
             <div className="space-y-4">
               <div className="card h-40 animate-pulse bg-gray-50" />
               <div className="grid grid-cols-7 gap-2">
-                {[...Array(7)].map(i => <div key={i} className="card h-28 animate-pulse bg-gray-50" />)}
+                {[...Array(7)].map((_, i) => <div key={i} className="card h-28 animate-pulse bg-gray-50" />)}
               </div>
             </div>
           )}
@@ -164,7 +165,7 @@ export default function Weather() {
                   </h2>
                   <div className="space-y-3">
                     {alerts.map((alert, i) => (
-                      <div key={i} className={`rounded-2xl p-4 flex gap-3 ${severityClass[alert.severity] || severityClass.warning}`}>
+                      <div key={alert.id || alert.title || i} className={`rounded-2xl p-4 flex gap-3 ${severityClass[alert.severity] || severityClass.warning}`}>
                         <span className="text-xl shrink-0">{severityIcon[alert.severity] || '⚠️'}</span>
                         <div>
                           <p className="font-semibold text-sm">{alert.title}</p>

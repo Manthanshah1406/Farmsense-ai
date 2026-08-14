@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useSocket } from '../context/SocketContext'
 import SidebarWeather from './SidebarWeather'
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const { user, isDemo, logout } = useAuth()
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -35,9 +35,8 @@ export default function Sidebar() {
     navigate('/login')
   }
 
-  return (
-    <aside className="hidden lg:flex flex-col w-60 min-h-screen bg-white border-r border-gray-100 py-5">
-
+  const renderSidebarBody = () => (
+    <aside className="flex flex-col w-60 h-screen sticky top-0 bg-white border-r border-gray-100 py-5 overflow-y-auto shrink-0 z-30">
       {/* Logo */}
       <div className="flex items-center gap-2 px-5 mb-6">
         <span className="text-2xl">🌾</span>
@@ -50,6 +49,7 @@ export default function Sidebar() {
           <NavLink
             key={path}
             to={path}
+            onClick={() => setMobileOpen && setMobileOpen(false)}
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'active' : ''}`
             }
@@ -88,5 +88,29 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+  )
+
+  return (
+    <>
+      {/* Desktop Sticky Sidebar */}
+      <div className="hidden lg:block shrink-0">
+        {renderSidebarBody()}
+      </div>
+
+      {/* Mobile Drawer Sidebar */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          {/* Overlay backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setMobileOpen && setMobileOpen(false)}
+          />
+          {/* Drawer sidebar */}
+          <div className="relative z-10 w-60 max-w-xs bg-white h-full shadow-2xl">
+            {renderSidebarBody()}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

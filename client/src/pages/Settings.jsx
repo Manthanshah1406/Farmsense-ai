@@ -7,6 +7,7 @@ import { updatePhone } from '../api/authApi'
 
 export default function Settings() {
   const { user, updateUser } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [prefs, setPrefs]       = useState({ email_alerts: true, sms_alerts: false, alert_types: ['heavy_rain', 'heatwave', 'drought_risk', 'frost_risk', 'strong_wind', 'fungal_risk', 'good_sowing_window', 'irrigation_needed'] })
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -16,14 +17,28 @@ export default function Settings() {
   const [phoneInput, setPhoneInput] = useState('')
   const [savingPhone, setSavingPhone] = useState(false)
 
+  const hasPhone = Boolean(user?.phone && user.phone.trim() !== '' && user.phone !== '0000000000' && !user.phone.startsWith('G'))
+
   useEffect(() => {
     api.get('/api/notifications/prefs')
-      .then((res) => setPrefs(res.data.prefs || prefs))
+      .then((res) => {
+        const fetchedPrefs = res.data.prefs || prefs
+        if (!hasPhone) {
+          fetchedPrefs.sms_alerts = false
+        }
+        setPrefs(fetchedPrefs)
+      })
       .catch(() => {}) // Use defaults if not set yet
       .finally(() => setLoading(false))
-  }, [])
+  }, [hasPhone])
 
-  const toggle = (key) => setPrefs((p) => ({ ...p, [key]: !p[key] }))
+  const toggle = (key) => {
+    if (key === 'sms_alerts' && !hasPhone) {
+      setEditingPhone(true)
+      return
+    }
+    setPrefs((p) => ({ ...p, [key]: !p[key] }))
+  }
 
   const toggleType = (type) => {
     setPrefs((p) => ({
@@ -38,7 +53,9 @@ export default function Settings() {
     setSaving(true)
     setSaved(false)
     try {
-      await api.put('/api/notifications/prefs', prefs)
+      const payload = { ...prefs }
+      if (!hasPhone) payload.sms_alerts = false
+      await api.put('/api/notifications/prefs', payload)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -75,9 +92,9 @@ export default function Settings() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
+        <Navbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto w-full">
           <div className="mb-6">
             <h1 className="font-heading font-bold text-2xl text-gray-900">⚙️ Settings</h1>
@@ -106,6 +123,7 @@ export default function Settings() {
                       value={phoneInput} 
                       onChange={(e) => setPhoneInput(e.target.value)}
                       placeholder="Phone number"
+                      autoFocus
                     />
                     <button onClick={handleSavePhone} disabled={savingPhone} className="text-primary text-sm font-medium hover:underline">
                       {savingPhone ? 'Saving...' : 'Save'}
@@ -114,9 +132,9 @@ export default function Settings() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-800 font-body">{user?.phone === '0000000000' ? 'Not set' : (user?.phone || '—')}</span>
+                    <span className="text-sm font-medium text-gray-800 font-body">{!hasPhone ? 'Not set' : user?.phone}</span>
                     <button 
-                      onClick={() => { setEditingPhone(true); setPhoneInput(user?.phone === '0000000000' ? '' : (user?.phone || '')); }} 
+                      onClick={() => { setEditingPhone(true); setPhoneInput(!hasPhone ? '' : user?.phone); }} 
                       className="text-xs text-primary hover:underline bg-primary/10 px-2 py-1 rounded"
                     >
                       Edit
@@ -136,30 +154,51 @@ export default function Settings() {
               </div>
             ) : (
               <div className="space-y-3">
-                {[
-                  { key: 'email_alerts', label: 'Email Notifications', icon: '📧', desc: `Alerts sent to ${user?.email}` },
-                  { key: 'sms_alerts', label: 'SMS Notifications', icon: '📱', desc: `Alerts sent to ${user?.phone === '0000000000' ? 'Not set' : (user?.phone || 'Not set')}` },
-                ].map(({ key, label, icon, desc }) => (
-                  <div key={key} className="flex items-center justify-between p-4 rounded-xl bg-background">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{icon}</span>
-                      <div>
-                        <p className="text-sm font-medium text-gray-800 font-body">{label}</p>
-                        <p className="text-xs text-gray-400 font-body">{desc}</p>
-                      </div>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-background">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📧</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 font-body">Email Notifications</p>
+                      <p className="text-xs text-gray-400 font-body">Alerts sent to {user?.email}</p>
                     </div>
-                    <button
-                      onClick={() => toggle(key)}
-                      id={`toggle-${key}`}
-                      className={`relative w-11 h-6 rounded-full transition-colors duration-200
-                        ${prefs[key] ? 'bg-primary' : 'bg-gray-300'}`}
-                    >
-                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
-                        ${prefs[key] ? 'translate-x-5' : 'translate-x-0'}`}
-                      />
-                    </button>
                   </div>
-                ))}
+                  <button
+                    onClick={() => toggle('email_alerts')}
+                    id="toggle-email_alerts"
+                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${prefs.email_alerts ? 'bg-primary' : 'bg-gray-300'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${prefs.email_alerts ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-xl bg-background">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📱</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 font-body">SMS Notifications</p>
+                      <p className="text-xs text-gray-400 font-body">
+                        {hasPhone ? (
+                          `Alerts sent to ${user?.phone}`
+                        ) : (
+                          <span className="text-amber-600 font-medium">
+                            Phone required — <button onClick={() => { setEditingPhone(true); setPhoneInput(''); }} className="underline hover:text-amber-700">Add Phone Number</button>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggle('sms_alerts')}
+                    id="toggle-sms_alerts"
+                    disabled={!hasPhone}
+                    title={!hasPhone ? 'Please add a phone number first to enable SMS notifications' : ''}
+                    className={`relative w-11 h-6 rounded-full transition-colors duration-200
+                      ${prefs.sms_alerts && hasPhone ? 'bg-primary' : 'bg-gray-300'}
+                      ${!hasPhone ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${prefs.sms_alerts && hasPhone ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
