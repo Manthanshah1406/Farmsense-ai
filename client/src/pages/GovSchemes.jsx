@@ -153,6 +153,7 @@ function SchemeModal({ scheme, onClose }) {
 }
 
 export default function GovSchemes() {
+  const [mobileOpen, setMobileOpen]         = useState(false)
   const [activeCategory, setActiveCategory] = useState('All')
   const [search, setSearch]                 = useState('')
   const [selected, setSelected]             = useState(null)
@@ -167,9 +168,9 @@ export default function GovSchemes() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
+        <Navbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
         <main className="flex-1 max-w-6xl mx-auto w-full">
 
           {/* ── Hero Banner ── */}

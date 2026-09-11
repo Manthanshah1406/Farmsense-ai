@@ -15,6 +15,7 @@ const CAT_LABELS = {
 
 export default function Suggestions() {
   const { isDemo }                  = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const [category, setCategory]     = useState('all')
   const [loading, setLoading]       = useState(true)
@@ -74,9 +75,9 @@ export default function Suggestions() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="flex-1 flex flex-col min-w-0 h-screen">
-        <Navbar />
+        <Navbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
         {isDemo && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
             <p className="text-xs text-amber-700 font-body">🧪 <strong>Demo Mode</strong> — ML-generated sample suggestions shown. Chat is disabled.</p>

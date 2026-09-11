@@ -22,7 +22,7 @@ const COMMON_CROPS     = [
 ]
 
 export default function Onboarding() {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const navigate         = useNavigate()
   const [step, setStep]  = useState(0)
   const [error, setError]   = useState('')
@@ -154,6 +154,9 @@ export default function Onboarding() {
         })
       }
 
+      if (updateUser) {
+        updateUser({ profile_completed: true })
+      }
       navigate('/dashboard')
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || 'Something went wrong. Please try again.')

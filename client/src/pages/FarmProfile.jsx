@@ -281,6 +281,7 @@ function SoilProfileSection({ farm, onUpdated, isDemo, onShowInspectionModal }) 
 
 export default function FarmProfile() {
   const { isDemo }    = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [farm, setFarm]     = useState(null)
   const [fields, setFields] = useState([])
   const [inspections, setInspections] = useState([])
@@ -326,9 +327,9 @@ export default function FarmProfile() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
+        <Navbar onToggleMobileSidebar={() => setMobileOpen(!mobileOpen)} />
         {isDemo && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
             <p className="text-xs text-amber-700 font-body">🧪 <strong>Demo Mode</strong> — showing Patel Farm in Anand, Gujarat</p>
