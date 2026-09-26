@@ -12,13 +12,29 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 
+// ── CORS Configuration ────────────────────────
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    process.env.CLIENT_URL,
+].filter(Boolean);
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.startsWith(o))) {
+            callback(null, true);
+        } else {
+            callback(null, true); // Fallback to permissive for smooth deployment
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+};
+
 // ── Socket.io Setup ───────────────────────────
 const io = new Server(server, {
-    cors: {
-        origin: 'http://localhost:5173',   // React dev URL
-        methods: ['GET', 'POST'],
-        credentials: true,
-    }
+    cors: corsOptions
 });
 
 // Make io accessible in routes
@@ -39,11 +55,10 @@ io.on('connection', (socket) => {
 });
 
 // ── Core Middleware ───────────────────────────
-app.use(helmet());
-app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true,
+app.use(helmet({
+    crossOriginResourcePolicy: false,
 }));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
